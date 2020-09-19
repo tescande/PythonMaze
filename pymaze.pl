@@ -146,7 +146,6 @@ class Maze:
 	def solve(self):
 		neighbours = [ [ -1, 0 ], [ 0, 1 ], [ 1, 0 ], [ 0, -1 ] ]
 		stack = []
-		self.max_distance = 0
 
 		cell = self.start_cell
 		self.board[cell[0]][cell[1]] = 3
@@ -159,8 +158,6 @@ class Maze:
 			row = cell[0]
 			col = cell[1]
 			d = self.board[row][col]
-			if d > self.max_distance:
-				self.max_distance = d
 
 			r = random.randint(0, 3)
 			for i in range(4):
