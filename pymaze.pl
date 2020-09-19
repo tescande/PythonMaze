@@ -25,9 +25,11 @@ from gi.repository import Gtk
 from gi.repository import Gdk
 
 class Maze:
-	def __init__(self, num_rows = 21, num_cols = 21):
+	def __init__(self, num_rows = 21, num_cols = 21, difficult = False):
 		self.num_rows = num_rows
 		self.num_cols = num_cols
+		self.difficult = difficult
+
 		self.board = []
 		self.start_cell = []
 		self.end_cell = []
@@ -102,6 +104,9 @@ class Maze:
 				self.board[row][self.num_cols - 1] = 2
 				self.end_cell = [ row, self.num_cols - 1 ]
 				break
+
+		if not self.difficult:
+			return
 
 		# Break some walls for a bit more complex maze
 		for i in range(max(self.num_rows, self.num_cols)):
@@ -254,7 +259,7 @@ class MazeWindow(Gtk.Window):
 			win.queue_draw()
 
 def main():
-	maze = Maze(71, 71)
+	maze = Maze(71, 71, False)
 	win = MazeWindow(maze)
 	win.show_all()
 	Gtk.main()
