@@ -23,6 +23,7 @@ import argparse
 import bisect
 import threading
 import time
+import re
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
@@ -52,16 +53,42 @@ class Cell:
 		return ('(row={0}, col={1}, h={2})'.format(self.row, self.col, self.heuristic))
 
 class Maze:
+	MIN_NUM_ROWS = 21
+	MAX_NUM_ROWS = 499
+
+	MIN_NUM_COLS = 21
+	MAX_NUM_COLS = 499
+
 	def __init__(self, num_rows = 21, num_cols = 21, difficult = False):
-		# Row and col numbers must be odd
-		self.num_rows = num_rows + 1 if not num_rows & 0x1 else num_rows
-		self.num_cols = num_cols + 1 if not num_cols & 0x1 else num_cols
+		self.set_sizes(num_rows, num_cols)
 		self.difficult = difficult
 
 		self.board = []
 		self.created = False
 		self.start_cell = None
 		self.end_cell = None
+
+	# Row and col numbers must be odd
+	def set_sizes(self, rows: int, cols: int):
+		if rows < Maze.MIN_NUM_ROWS:
+			self.num_rows = Maze.MIN_NUM_ROWS
+		elif rows > Maze.MAX_NUM_ROWS:
+			self.num_rows = Maze.MAX_NUM_ROWS
+		elif not rows & 0x1:
+			self.num_rows = rows + 1
+		else:
+			self.num_rows = rows
+
+		if cols < Maze.MIN_NUM_COLS:
+			self.num_cols = Maze.MIN_NUM_COLS
+		elif cols > Maze.MAX_NUM_COLS:
+			self.num_cols = Maze.MAX_NUM_COLS
+		elif not cols & 0x1:
+			self.num_cols = cols + 1
+		else:
+			self.num_cols = cols
+
+		return (self.num_rows, self.num_cols)
 
 	def is_wall(self, row, col):
 		return self.board[row][col].value == 0
@@ -233,6 +260,14 @@ class Maze:
 				return True
 		return False
 
+	def clear(self):
+		for row in self.board:
+			for cell in row:
+				if cell.value != 0:
+					cell.value = 2
+					cell.color = None
+					cell.path = False
+
 	def show_maze(self):
 		for row in self.maze:
 			for v in row:
@@ -245,21 +280,101 @@ class MazeWindow(Gtk.Window):
 		self.maze = maze
 		self.animate = animate
 		self.solver_thread = None
+		self.re = None
 
 		Gtk.Window.__init__(self, title="Python Maze")
-		self.set_default_size(655, 655)
+
+		hbox = Gtk.HBox(spacing=3)
+		self.add(hbox)
+
+		grid = Gtk.Grid(row_spacing=6, column_spacing=6)
+		hbox.pack_start(grid, False, False, 6)
+		self.controls_grid = grid
 
 		self.da = Gtk.DrawingArea()
-		self.add(self.da)
+		self.da.set_size_request(500, 500)
+		hbox.pack_start(self.da, True, True, 6)
+
+		separator = Gtk.Separator(orientation = Gtk.Orientation.HORIZONTAL)
+		grid.add(separator)
+
+		label_rows = Gtk.Label(xalign = 1)
+		label_rows.set_text("Rows:")
+		grid.attach_next_to(label_rows, separator, Gtk.PositionType.BOTTOM, 1, 1)
+
+		entry = Gtk.Entry()
+		entry.set_max_length(3)
+		entry.set_width_chars(3)
+		entry.set_text(str(self.maze.num_cols))
+		entry.props.input_purpose = Gtk.InputPurpose.DIGITS
+		entry.connect("insert-text", self.on_insert)
+		grid.attach_next_to(entry, label_rows, Gtk.PositionType.RIGHT, 1, 1)
+		self.entry_rows = entry
+
+		label_cols = Gtk.Label(xalign = 1)
+		label_cols.set_text("Cols:")
+		grid.attach_next_to(label_cols, label_rows, Gtk.PositionType.BOTTOM, 1, 1)
+
+		entry = Gtk.Entry()
+		entry.set_text(str(self.maze.num_rows))
+		entry.set_max_length(3)
+		entry.set_width_chars(3)
+		entry.props.input_purpose = Gtk.InputPurpose.DIGITS
+		entry.connect("insert-text", self.on_insert)
+		self.entry_cols = entry
+		grid.attach_next_to(entry, label_cols, Gtk.PositionType.RIGHT, 1, 1)
+
+		check = Gtk.CheckButton.new_with_label("Difficult")
+		check.set_active(self.maze.difficult)
+		check.connect("clicked", self.on_difficult_clicked)
+		grid.attach_next_to(check, label_cols, Gtk.PositionType.BOTTOM, 2, 1)
+
+		button = Gtk.Button.new_with_label("New")
+		button.connect("clicked", self.on_new_clicked)
+		grid.attach_next_to(button, check, Gtk.PositionType.BOTTOM, 2, 1)
+
+		separator = Gtk.Separator(orientation = Gtk.Orientation.HORIZONTAL)
+		grid.attach_next_to(separator, button, Gtk.PositionType.BOTTOM, 2, 1)
+
+		check = Gtk.CheckButton.new_with_label("Animate")
+		check.set_active(self.animate)
+		check.connect("clicked", self.on_animate_clicked)
+		grid.attach_next_to(check, separator, Gtk.PositionType.BOTTOM, 2, 1)
+
+		button = Gtk.Button.new_with_label("Solve")
+		button.connect("clicked", self.on_solve_clicked)
+		grid.attach_next_to(button, check, Gtk.PositionType.BOTTOM, 2, 1)
+
 
 		self.connect("destroy", Gtk.main_quit)
 		self.connect("key_press_event", self.on_key_press)
 		self.da.connect('draw', self.on_draw)
 
-		# Delay do_maze() execution so the GTK window is displayed
-		# before the maze is initialized
-		Gdk.threads_add_timeout(GLib.PRIORITY_DEFAULT_IDLE, 0.1,
-					self.do_maze)
+		self.create_maze()
+
+	def on_insert(self, entry, text, text_len, pos):
+		if self.re is None:
+			self.re = re.compile("\D+")
+
+		if self.re.search(text):
+			entry.emit_stop_by_name("insert-text");
+			return True
+
+		return False
+
+	def on_new_clicked(self, button):
+		self.create_maze()
+		self.queue_draw()
+
+	def on_solve_clicked(self, button):
+		self.maze.clear()
+		self.solve_maze()
+
+	def on_difficult_clicked(self, button):
+		self.maze.difficult = button.get_active();
+
+	def on_animate_clicked(self, button):
+		self.animate = button.get_active();
 
 	def monitor_solver(self):
 		if self.solver_thread is None:
@@ -268,6 +383,7 @@ class MazeWindow(Gtk.Window):
 		if not self.solver_thread.is_alive():
 			self.queue_draw()
 			self.solver_thread = None
+			self.controls_grid.set_sensitive(True)
 			return False
 
 		if self.animate:
@@ -289,17 +405,28 @@ class MazeWindow(Gtk.Window):
 					self.monitor_solver)
 		return False
 
-	def do_maze(self):
+	def create_maze(self):
 		if self.solver_thread is not None:
-			return False
+			return
+
+		rows = int(self.entry_rows.get_text())
+		cols = int(self.entry_cols.get_text())
+		(rows, cols) = self.maze.set_sizes(rows, cols)
+		self.entry_rows.set_text(str(rows))
+		self.entry_cols.set_text(str(cols))
 
 		self.maze.create()
-		self.queue_draw()
+
+	def solve_maze(self):
+		if self.solver_thread is not None:
+			return
+
+		self.controls_grid.set_sensitive(False)
 
 		# Start the solver thread with a delay
 		Gdk.threads_add_timeout(GLib.PRIORITY_DEFAULT_IDLE, 0.1,
 					self.start_solver)
-		return False
+		return
 
 	def set_cr_color(self, cr, color):
 		cr.set_source_rgb(color[0], color[1], color[2])
@@ -334,7 +461,8 @@ class MazeWindow(Gtk.Window):
 
 	def on_key_press(self, win, event):
 		if event.keyval == Gdk.KEY_F5:
-			self.do_maze()
+			self.create_maze()
+			self.solve_maze()
 
 def main():
 	parser = argparse.ArgumentParser()
