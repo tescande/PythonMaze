@@ -102,6 +102,36 @@ class Maze:
 				self.end_cell = [ row, self.num_cols - 1 ]
 				break
 
+		# Break some walls for a bit more complex maze
+		for i in range(max(self.num_rows, self.num_cols)):
+			while True:
+				row = random.randrange(1, self.num_rows - 1)
+				col = random.randrange(1, self.num_cols - 1)
+
+				if self.is_wall(row, col):
+					w = 0
+					if self.is_wall(row - 1, col):
+						w += 1
+					if self.is_wall(row + 1, col):
+						w += 1
+					# 1 wall up or down means we're on a
+					# wall end or at the top of a T. We need
+					# to choose another wall
+					if w == 1:
+						continue
+
+					if self.is_wall(row, col - 1):
+						w += 1
+					if self.is_wall(row, col + 1):
+						w += 1
+
+					# We're surounded by 2 walls verticaly
+					# or horizontaly. It's a match
+					if w == 2:
+						break
+
+			self.board[row][col] = 2
+
 	def are_same_cells(self, cell1, cell2):
 		return cell1[0] == cell2[0] and cell1[1] == cell2[1]
 
