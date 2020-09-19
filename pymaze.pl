@@ -19,6 +19,7 @@ import random
 import gi
 import cairo
 import math
+import argparse
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
@@ -259,7 +260,13 @@ class MazeWindow(Gtk.Window):
 			win.queue_draw()
 
 def main():
-	maze = Maze(71, 71, False)
+	parser = argparse.ArgumentParser()
+	parser.add_argument('-r', '--rows', type=int, default=81, help='Maze rows')
+	parser.add_argument('-c', '--cols', type=int, default=81, help='Maze columns')
+	parser.add_argument('-C', '--complex', action='store_true', default=False, help='Produce a more complex maze')
+	args = parser.parse_args()
+
+	maze = Maze(args.rows, args.cols, args.complex)
 	win = MazeWindow(maze)
 	win.show_all()
 	Gtk.main()
