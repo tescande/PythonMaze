@@ -34,6 +34,7 @@ class Maze:
 
 		self.init_board()
 		self.create()
+		self.solve()
 
 	def init_board(self):
 		self.board.clear()
@@ -141,6 +142,70 @@ class Maze:
 	def is_end(self, cell):
 		return self.are_same_cells(cell, self.end_cell)
 
+	def solve(self):
+		neighbours = [ [ -1, 0 ], [ 0, 1 ], [ 1, 0 ], [ 0, -1 ] ]
+		stack = []
+		self.max_distance = 0
+
+		cell = self.start_cell
+		self.board[cell[0]][cell[1]] = 3
+		stack.append(cell)
+
+		solved = not True
+
+		while not solved:
+			cell = stack.pop(-1)
+			row = cell[0]
+			col = cell[1]
+			d = self.board[row][col]
+			if d > self.max_distance:
+				self.max_distance = d
+
+			r = random.randint(0, 3)
+			for i in range(4):
+				n = neighbours[(i + r) % 4]
+				n_row = row + n[0]
+				n_col = col + n[1]
+
+				if n_row < 0 or n_row >= self.num_rows or n_col < 0 or n_col >= self.num_cols:
+					continue
+
+				if self.is_end([n_row, n_col]):
+					self.board[n_row][n_col] = d + 1
+					solved = True
+					break
+
+				if self.board[n_row][n_col] == 0 or self.board[n_row][n_col] > 2:
+					continue
+
+				stack.append([row, col])
+
+				self.board[n_row][n_col] = d + 1
+				stack.append([n_row, n_col])
+				break
+
+		cell = self.end_cell
+		while not self.is_start(cell):
+			row = cell[0]
+			col = cell[1]
+			d = self.board[row][col]
+			self.board[row][col] = -1
+
+			for i in range(4):
+				n = neighbours[i]
+				n_row = row + n[0]
+				n_col = col + n[1]
+
+				if n_row < 0 or n_row >= self.num_rows or n_col < 0 or n_col >= self.num_cols:
+					continue
+
+				v = self.board[n_row][n_col]
+				if v > 2 and v < d:
+					d = v
+					cell = [n_row, n_col]
+
+		self.board[self.start_cell[0]][self.start_cell[1]] = -1
+
 	def show_maze(self):
 		for row in self.maze:
 			for v in row:
@@ -166,13 +231,18 @@ class MazeWindow(Gtk.Window):
 		self.maze = maze
 
 	def on_draw(self, win, cr):
-		cr.set_source_rgb(0, 0, 0)
 		for row in range(self.maze.num_rows):
 			for col in range(self.maze.num_cols):
 				v = self.maze.board[row][col]
 				if v > 0:
 					continue
 
+				r = g = b = 0
+
+				if v == -1:
+					r = 1
+
+				cr.set_source_rgb(r, g, b)
 				cr.rectangle(col * 10 + 10, row * 10 + 10, 10, 10)
 				cr.fill()
 
@@ -180,7 +250,7 @@ class MazeWindow(Gtk.Window):
 		if event.keyval == Gdk.KEY_F5:
 			self.maze.init_board()
 			self.maze.create()
-
+			self.maze.solve()
 			win.queue_draw()
 
 def main():
