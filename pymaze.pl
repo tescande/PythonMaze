@@ -56,6 +56,7 @@ class Maze:
 		self.difficult = difficult
 
 		self.board = []
+		self.created = False
 		self.start_cell = None
 		self.end_cell = None
 
@@ -73,6 +74,7 @@ class Maze:
 		neighbours = [ Cell(-2, 0), Cell(0, 2), Cell(2, 0), Cell(0, -2) ]
 		walls = [ Cell(-1, 0), Cell(0, 1), Cell(1, 0), Cell(0, -1) ]
 
+		self.created = True
 		self.board.clear()
 
 		for r in range(self.num_rows):
@@ -174,6 +176,9 @@ class Maze:
 		neighbours = [ Cell(-1, 0), Cell(0, 1), Cell(1, 0), Cell(0, -1) ]
 		open = []
 		closed = []
+
+		if not self.created:
+			self.create()
 
 		cell = Cell(self.start_cell.row, self.start_cell.col)
 		cell.value = 0
