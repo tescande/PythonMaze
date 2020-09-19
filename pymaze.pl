@@ -259,10 +259,13 @@ class MazeWindow(Gtk.Window):
 
 	def on_draw(self, win, cr):
 		rect = self.da.get_allocated_size().allocation
+
 		cell_width = int(rect.width / self.maze.num_cols)
 		cell_height = int(rect.height / self.maze.num_rows)
+
 		x_padding = int((rect.width - (cell_width * self.maze.num_cols)) / 2)
 		y_padding = int((rect.height - (cell_height * self.maze.num_rows)) / 2)
+
 		for row in range(self.maze.num_rows):
 			for col in range(self.maze.num_cols):
 				cell = self.maze.board[row][col]
