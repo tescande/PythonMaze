@@ -62,23 +62,8 @@ class Maze:
 		self.do_maze()
 
 	def do_maze(self):
-		self.init_board()
 		self.create()
 		self.solve()
-
-	def init_board(self):
-		self.board.clear()
-
-		for r in range(self.num_rows):
-			row = []
-			for c in range(self.num_cols):
-				cell = Cell(r, c)
-				if r % 2 and c % 2:
-					cell.value = 1
-				else:
-					cell.value = 0
-				row.append(cell)
-			self.board.append(row)
 
 	def is_wall(self, row, col):
 		return self.board[row][col].value == 0
@@ -88,6 +73,17 @@ class Maze:
 		neighbours = [ Cell(-2, 0), Cell(0, 2), Cell(2, 0), Cell(0, -2) ]
 		walls = [ Cell(-1, 0), Cell(0, 1), Cell(1, 0), Cell(0, -1) ]
 
+		self.board.clear()
+
+		for r in range(self.num_rows):
+			row = []
+			for c in range(self.num_cols):
+				cell = Cell(r, c)
+				cell.value = 1 if r & 1 and c & 1 else 0
+				row.append(cell)
+			self.board.append(row)
+
+		# Choose a first cell randomly
 		row = random.randrange(1, self.num_rows, 2);
 		col = random.randrange(1, self.num_cols, 2);
 		self.board[row][col].value = 2
