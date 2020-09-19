@@ -230,8 +230,7 @@ class MazeWindow(Gtk.Window):
 		self.maze = maze
 
 		Gtk.Window.__init__(self, title="Python Maze")
-		self.set_default_size(maze.num_cols * 10 + 20,
-				      maze.num_rows * 10 + 20)
+		self.set_default_size(655, 655)
 
 		self.da = Gtk.DrawingArea()
 		self.add(self.da)
@@ -243,6 +242,11 @@ class MazeWindow(Gtk.Window):
 		self.maze = maze
 
 	def on_draw(self, win, cr):
+		rect = self.da.get_allocated_size().allocation
+		cell_width = int(rect.width / self.maze.num_cols)
+		cell_height = int(rect.height / self.maze.num_rows)
+		x_padding = int((rect.width - (cell_width * self.maze.num_cols)) / 2)
+		y_padding = int((rect.height - (cell_height * self.maze.num_rows)) / 2)
 		for row in range(self.maze.num_rows):
 			for col in range(self.maze.num_cols):
 				v = self.maze.board[row][col]
@@ -255,7 +259,9 @@ class MazeWindow(Gtk.Window):
 					r = 1
 
 				cr.set_source_rgb(r, g, b)
-				cr.rectangle(col * 10 + 10, row * 10 + 10, 10, 10)
+				cr.rectangle((col * cell_width) + x_padding,
+					     (row * cell_height) + y_padding,
+					     cell_width, cell_height)
 				cr.fill()
 
 	def on_key_press(self, win, event):
