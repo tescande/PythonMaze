@@ -33,8 +33,8 @@ class Maze:
 		self.difficult = difficult
 
 		self.board = []
-		self.start_cell = []
-		self.end_cell = []
+		self.start_cell = [ 1, 0 ]
+		self.end_cell = [ self.num_rows - 2, self.num_cols - 1 ]
 
 		self.init_board()
 		self.create()
@@ -95,17 +95,8 @@ class Maze:
 			# Break the wall
 			self.board[row][col] = 2
 
-		for row in range(self.num_rows):
-			if self.board[row][1]:
-				self.board[row][0] = 2
-				self.start_cell = [ row, 0 ]
-				break
-
-		for row in range(self.num_rows - 1, 0, -1):
-			if self.board[row][self.num_cols - 2]:
-				self.board[row][self.num_cols - 1] = 2
-				self.end_cell = [ row, self.num_cols - 1 ]
-				break
+		self.board[self.start_cell[0]][self.start_cell[1]] = 2
+		self.board[self.end_cell[0]][self.end_cell[1]] = 2
 
 		if not self.difficult:
 			return
