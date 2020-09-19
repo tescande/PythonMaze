@@ -20,6 +20,7 @@ import gi
 import cairo
 import math
 import argparse
+import bisect
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
@@ -32,6 +33,8 @@ class Cell:
 		self.value = 0
 		self.path = False
 		self.color = None
+		self.heuristic = 0
+		self.parent = parent
 
 	# Compare cells
 	def __eq__(self, cell):
@@ -39,11 +42,11 @@ class Cell:
 
 	# Sort cells
 	def __lt__(self, cell):
-		return self.valuc < cell.value
+		return self.heuristic < cell.heuristic
 
 	# Print cell
 	def __repr__(self):
-		return ('(row={0}, col={1}, h={2})'.format(self.row, self.col, self.value))
+		return ('(row={0}, col={1}, h={2})'.format(self.row, self.col, self.heuristic))
 
 class Maze:
 	def __init__(self, num_rows = 21, num_cols = 21, difficult = False):
@@ -167,76 +170,65 @@ class Maze:
 
 			self.board[row][col].value = 2
 
-	def are_same_cells(self, cell1, cell2):
-		return cell1.row == cell2.row and cell1.col == cell2.col
-
-	def is_start(self, cell):
-		return self.are_same_cells(cell, self.start_cell)
-
-	def is_end(self, cell):
-		return self.are_same_cells(cell, self.end_cell)
+	def distance_to_end(self, cell):
+		return (abs(cell.row - self.end_cell.row) +
+			abs(cell.col - self.end_cell.col))
 
 	def solve(self):
 		neighbours = [ Cell(-1, 0), Cell(0, 1), Cell(1, 0), Cell(0, -1) ]
-		stack = []
+		open = []
+		closed = []
 
-		self.start_cell.value = 3
-		stack.append(self.start_cell)
+		cell = Cell(self.start_cell.row, self.start_cell.col)
+		cell.value = 0
+		cell.heuristic = self.distance_to_end(cell)
 
-		while len(stack):
-			cell = stack.pop(-1)
-			d = cell.value
-			sel_d = d
+		open.append(cell)
 
-			sel_cell = None
-			for i in range(4):
-				n = neighbours[i]
+		while len(open):
+			cell = open.pop(0)
+			closed.append(cell)
 
-				if (cell.row + n.row < 0 or
-				    cell.row + n.row >= self.num_rows or
-				    cell.col + n.col < 0 or
-				    cell.col + n.col >= self.num_cols):
-					continue
-
-				n_cell = self.board[cell.row + n.row][cell.col + n.col]
-
-				if n_cell.value == 0:
-					continue
-
-				if n_cell.value == 2:
-					sel_cell = n_cell
-					break
-
-				if n_cell.value > sel_d + 1:
-					sel_d = sel_d + 1
-					sel_cell = n_cell
-
-			if not sel_cell is None:
-				stack.append(cell)
-				sel_cell.value = d + 1
-				stack.append(sel_cell)
-
-		cell = self.end_cell
-		while not self.is_start(cell):
-			row = cell.row
-			col = cell.col
-			d = cell.value
-			cell.path = True
+			if cell == self.end_cell:
+				while cell.parent is not None:
+					self.board[cell.row][cell.col].path = True
+					cell = cell.parent
+				self.board[cell.row][cell.col].path = True
+				return
 
 			for i in range(4):
 				n = neighbours[i]
-				n_row = row + n.row
-				n_col = col + n.col
+				n_row = cell.row + n.row
+				n_col = cell.col + n.col
 
-				if n_row < 0 or n_row >= self.num_rows or n_col < 0 or n_col >= self.num_cols:
+				if (n_row < 0 or n_row >= self.num_rows or
+				    n_col < 0 or n_col >= self.num_cols):
 					continue
 
-				v = self.board[n_row][n_col].value
-				if v > 2 and v < d:
-					d = v
-					cell = self.board[n_row][n_col]
+				# This is a wall
+				if self.board[n_row][n_col].value == 0:
+					continue
 
-		self.start_cell.path = True
+				n_cell = Cell(n_row, n_col, cell)
+				if n_cell in closed:
+					continue
+
+				# Generate heuristics
+				n_cell.value = cell.value + 1
+				n_cell.heuristic = (n_cell.value +
+						    self.distance_to_end(cell))
+
+				# Lookup in open for same cell with a lower value
+				if not self.lookup_cell_low_value(open, n_cell):
+					bisect.insort_left(open, n_cell)
+
+		print("No path found!!!")
+
+	def lookup_cell_low_value(self, open, cell):
+		for c in open:
+			if c == cell and c.value < cell.value:
+				return True
+		return False
 
 	def show_maze(self):
 		for row in self.maze:
