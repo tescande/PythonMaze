@@ -25,6 +25,26 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 from gi.repository import Gdk
 
+class Cell:
+	def __init__(self, row, col, parent = None):
+		self.row = row
+		self.col = col
+		self.value = 0
+		self.path = False
+		self.color = None
+
+	# Compare cells
+	def __eq__(self, cell):
+		return self.row == cell.row and self.col == cell.col
+
+	# Sort cells
+	def __lt__(self, cell):
+		return self.valuc < cell.value
+
+	# Print cell
+	def __repr__(self):
+		return ('(row={0}, col={1}, h={2})'.format(self.row, self.col, self.value))
+
 class Maze:
 	def __init__(self, num_rows = 21, num_cols = 21, difficult = False):
 		# Row and col numbers must be odd
@@ -33,8 +53,8 @@ class Maze:
 		self.difficult = difficult
 
 		self.board = []
-		self.start_cell = [ 1, 0 ]
-		self.end_cell = [ self.num_rows - 2, self.num_cols - 1 ]
+		self.start_cell = None
+		self.end_cell = None
 
 		self.do_maze()
 
@@ -50,64 +70,70 @@ class Maze:
 		for r in range(self.num_rows):
 			row = []
 			for c in range(self.num_cols):
-				row.append(1 if r % 2 and c % 2 else 0)
+				cell = Cell(r, c)
+				if r % 2 and c % 2:
+					cell.value = 1
+				else:
+					cell.value = 0
+				row.append(cell)
 			self.board.append(row)
 
 	def is_wall(self, row, col):
-		return self.board[row][col] == 0
-
-	def set_cell(self, cell, value):
-		self.board[cell[0]][cell[1]] = value
+		return self.board[row][col].value == 0
 
 	def create(self):
 		stack = []
-		neighbours = [ [ -2, 0 ], [ 0, 2 ], [ 2, 0 ], [ 0, -2 ] ]
-		walls = [ [ -1, 0 ], [ 0, 1 ], [ 1, 0 ], [ 0, -1 ] ]
+		neighbours = [ Cell(-2, 0), Cell(0, 2), Cell(2, 0), Cell(0, -2) ]
+		walls = [ Cell(-1, 0), Cell(0, 1), Cell(1, 0), Cell(0, -1) ]
 
 		row = random.randrange(1, self.num_rows, 2);
 		col = random.randrange(1, self.num_cols, 2);
-		self.board[row][col] = 2
+		self.board[row][col].value = 2
 
-		stack.append([row, col])
+		stack.append(self.board[row][col])
 
 		while (len(stack)):
 			cell = stack.pop(-1)
-			row = cell[0]
-			col = cell[1]
+			row = cell.row
+			col = cell.col
 
 			# Choose a random neighbour
 			r = random.randint(0, 3)
 			for i in range(4):
 				n = neighbours[(i + r) % 4]
-				n_row = row + n[0]
-				n_col = col + n[1]
+				n_row = cell.row + n.row
+				n_col = col + n.col
 
 				if n_row < 0 or n_row >= self.num_rows or n_col < 0 or n_col >= self.num_cols:
 					continue
 
-				if self.board[n_row][n_col] == 2:
+				n_cell = self.board[n_row][n_col]
+
+				if n_cell.value == 2:
 					continue
 
 				# Put the current cell back into the stack
-				stack.append([row, col])
+				stack.append(cell)
 
 				# Mark the neighbour as visited and put it
 				# into the stack so it's the next cell to be
 				# investigated
-				self.board[n_row][n_col] = 2
-				stack.append([n_row, n_col])
+				n_cell.value = 2
+				stack.append(n_cell)
 
 				# Remove wall between cells
 				w = walls[(i + r) % 4]
-				self.board[row + w[0]][col + w[1]] = 2
+				self.board[row + w.row][col + w.col].value = 2
 
 				break
 
 			# Mark the cell as visited
-			self.board[row][col] = 2
+			cell.value = 2
 
-		self.set_cell(self.start_cell, 2)
-		self.set_cell(self.end_cell, 2)
+		self.start_cell = self.board[1][0]
+		self.end_cell = self.board[self.num_rows - 2][self.num_cols - 1]
+		self.start_cell.value = 2
+		self.end_cell.value = 2
 
 		if not self.difficult:
 			return
@@ -140,10 +166,10 @@ class Maze:
 					if w == 2:
 						break
 
-			self.board[row][col] = 2
+			self.board[row][col].value = 2
 
 	def are_same_cells(self, cell1, cell2):
-		return cell1[0] == cell2[0] and cell1[1] == cell2[1]
+		return cell1.row == cell2.row and cell1.col == cell2.col
 
 	def is_start(self, cell):
 		return self.are_same_cells(cell, self.start_cell)
@@ -152,71 +178,70 @@ class Maze:
 		return self.are_same_cells(cell, self.end_cell)
 
 	def solve(self):
-		neighbours = [ [ -1, 0 ], [ 0, 1 ], [ 1, 0 ], [ 0, -1 ] ]
+		neighbours = [ Cell(-1, 0), Cell(0, 1), Cell(1, 0), Cell(0, -1) ]
 		stack = []
 
-		cell = self.start_cell
-		self.set_cell(cell, 3)
-		stack.append(cell)
+		self.start_cell.value = 3
+		stack.append(self.start_cell)
 
 		while len(stack):
 			cell = stack.pop(-1)
-			row = cell[0]
-			col = cell[1]
-			d = self.board[row][col]
+			d = cell.value
 			sel_d = d
 
-			sel_row = sel_col = -1
+			sel_cell = None
 			for i in range(4):
 				n = neighbours[i]
-				n_row = row + n[0]
-				n_col = col + n[1]
 
-				if n_row < 0 or n_row >= self.num_rows or n_col < 0 or n_col >= self.num_cols:
+				if (cell.row + n.row < 0 or
+				    cell.row + n.row >= self.num_rows or
+				    cell.col + n.col < 0 or
+				    cell.col + n.col >= self.num_cols):
 					continue
 
-				if self.board[n_row][n_col] == 0:
+				n_cell = self.board[cell.row + n.row][cell.col + n.col]
+
+				if n_cell.value == 0:
 					continue
 
-				if self.board[n_row][n_col] == 2:
-					sel_row = n_row
-					sel_col = n_col
+				if n_cell.value == 2:
+					sel_cell = n_cell
 					break
 
-				if self.board[n_row][n_col] > sel_d + 1:
+				if n_cell.value > sel_d + 1:
 					sel_d = sel_d + 1
-					sel_row = n_row
-					sel_col = n_col
+					sel_cell = n_cell
 
-			if sel_row != -1:
-				stack.append([row, col])
-				self.board[sel_row][sel_col] = d + 1
-				stack.append([sel_row, sel_col])
+			if not sel_cell is None:
+				stack.append(cell)
+				sel_cell.value = d + 1
+				stack.append(sel_cell)
+
 
 	def mark_solution_path(self):
-		neighbours = [ [ -1, 0 ], [ 0, 1 ], [ 1, 0 ], [ 0, -1 ] ]
+		neighbours = [ Cell(-1, 0), Cell(0, 1), Cell(1, 0), Cell(0, -1) ]
 
 		cell = self.end_cell
 		while not self.is_start(cell):
-			row = cell[0]
-			col = cell[1]
-			d = self.board[row][col]
-			self.board[row][col] = -1
+			row = cell.row
+			col = cell.col
+			d = cell.value
+			cell.path = True
 
 			for i in range(4):
 				n = neighbours[i]
-				n_row = row + n[0]
-				n_col = col + n[1]
+				n_row = row + n.row
+				n_col = col + n.col
 
 				if n_row < 0 or n_row >= self.num_rows or n_col < 0 or n_col >= self.num_cols:
 					continue
 
-				v = self.board[n_row][n_col]
+				v = self.board[n_row][n_col].value
 				if v > 2 and v < d:
 					d = v
-					cell = [n_row, n_col]
+					cell = self.board[n_row][n_col]
 
-		self.board[self.start_cell[0]][self.start_cell[1]] = -1
+		self.start_cell.path = True
 
 	def show_maze(self):
 		for row in self.maze:
@@ -241,6 +266,9 @@ class MazeWindow(Gtk.Window):
 
 		self.maze = maze
 
+	def set_cr_color(self, cr, color):
+		cr.set_source_rgb(color[0], color[1], color[2])
+
 	def on_draw(self, win, cr):
 		rect = self.da.get_allocated_size().allocation
 		cell_width = int(rect.width / self.maze.num_cols)
@@ -249,16 +277,18 @@ class MazeWindow(Gtk.Window):
 		y_padding = int((rect.height - (cell_height * self.maze.num_rows)) / 2)
 		for row in range(self.maze.num_rows):
 			for col in range(self.maze.num_cols):
-				v = self.maze.board[row][col]
-				if v > 0:
+				cell = self.maze.board[row][col]
+				if cell.value == 0:
+					color = [ 0, 0, 0 ]
+				elif cell.path:
+					color = [ 0, 1, 0 ]
+				else:
+					color = self.maze.board[row][col].color
+
+				if color is None:
 					continue
 
-				r = g = b = 0
-
-				if v == -1:
-					r = 1
-
-				cr.set_source_rgb(r, g, b)
+				self.set_cr_color(cr, color)
 				cr.rectangle((col * cell_width) + x_padding,
 					     (row * cell_height) + y_padding,
 					     cell_width, cell_height)
