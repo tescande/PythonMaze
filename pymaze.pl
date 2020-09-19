@@ -56,6 +56,9 @@ class Maze:
 	def is_wall(self, row, col):
 		return self.board[row][col] == 0
 
+	def set_cell(self, cell, value):
+		self.board[cell[0]][cell[1]] = value
+
 	def create(self):
 		stack = []
 		neighbours = [ [ -2, 0 ], [ 0, 2 ], [ 2, 0 ], [ 0, -2 ] ]
@@ -99,8 +102,8 @@ class Maze:
 			# Break the wall
 			self.board[row][col] = 2
 
-		self.board[self.start_cell[0]][self.start_cell[1]] = 2
-		self.board[self.end_cell[0]][self.end_cell[1]] = 2
+		self.set_cell(self.start_cell, 2)
+		self.set_cell(self.end_cell, 2)
 
 		if not self.difficult:
 			return
@@ -149,7 +152,7 @@ class Maze:
 		stack = []
 
 		cell = self.start_cell
-		self.board[cell[0]][cell[1]] = 3
+		self.set_cell(cell, 3)
 		stack.append(cell)
 
 		solved = not True
