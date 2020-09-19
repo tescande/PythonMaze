@@ -21,10 +21,13 @@ import cairo
 import math
 import argparse
 import bisect
+import threading
+import time
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 from gi.repository import Gdk
+from gi.repository import GLib
 
 class Cell:
 	def __init__(self, row, col, parent = None):
@@ -59,12 +62,6 @@ class Maze:
 		self.created = False
 		self.start_cell = None
 		self.end_cell = None
-
-		self.do_maze()
-
-	def do_maze(self):
-		self.create()
-		self.solve()
 
 	def is_wall(self, row, col):
 		return self.board[row][col].value == 0
@@ -172,7 +169,7 @@ class Maze:
 		return (abs(cell.row - self.end_cell.row) +
 			abs(cell.col - self.end_cell.col))
 
-	def solve(self):
+	def solve(self, delay = 0):
 		neighbours = [ Cell(-1, 0), Cell(0, 1), Cell(1, 0), Cell(0, -1) ]
 		open = []
 		closed = []
@@ -187,6 +184,9 @@ class Maze:
 		open.append(cell)
 
 		while len(open):
+			if delay:
+				time.sleep(delay)
+
 			cell = open.pop(0)
 			closed.append(cell)
 			self.board[cell.row][cell.col].color = [ 0.8, 0.8, 0.8 ]
@@ -241,8 +241,10 @@ class Maze:
 		print("")
 
 class MazeWindow(Gtk.Window):
-	def __init__(self, maze):
+	def __init__(self, maze, animate = False):
 		self.maze = maze
+		self.animate = animate
+		self.solver_thread = None
 
 		Gtk.Window.__init__(self, title="Python Maze")
 		self.set_default_size(655, 655)
@@ -253,6 +255,51 @@ class MazeWindow(Gtk.Window):
 		self.connect("destroy", Gtk.main_quit)
 		self.connect("key_press_event", self.on_key_press)
 		self.da.connect('draw', self.on_draw)
+
+		# Delay do_maze() execution so the GTK window is displayed
+		# before the maze is initialized
+		Gdk.threads_add_timeout(GLib.PRIORITY_DEFAULT_IDLE, 0.1,
+					self.do_maze)
+
+	def monitor_solver(self):
+		if self.solver_thread is None:
+			return False
+
+		if not self.solver_thread.is_alive():
+			self.queue_draw()
+			self.solver_thread = None
+			return False
+
+		if self.animate:
+			self.queue_draw()
+
+		return True
+
+	def start_solver(self):
+		if self.solver_thread is not None:
+			return
+
+		self.solver_thread = threading.Thread(target=self.maze.solve,
+						      args=[ 0.001 if self.animate else 0 ],
+						      daemon=True)
+		self.solver_thread.start()
+
+		# Start a refresh callback for nice animation
+		Gdk.threads_add_timeout(GLib.PRIORITY_DEFAULT_IDLE, 0.1,
+					self.monitor_solver)
+		return False
+
+	def do_maze(self):
+		if self.solver_thread is not None:
+			return False
+
+		self.maze.create()
+		self.queue_draw()
+
+		# Start the solver thread with a delay
+		Gdk.threads_add_timeout(GLib.PRIORITY_DEFAULT_IDLE, 0.1,
+					self.start_solver)
+		return False
 
 	def set_cr_color(self, cr, color):
 		cr.set_source_rgb(color[0], color[1], color[2])
@@ -287,18 +334,18 @@ class MazeWindow(Gtk.Window):
 
 	def on_key_press(self, win, event):
 		if event.keyval == Gdk.KEY_F5:
-			self.maze.do_maze()
-			win.queue_draw()
+			self.do_maze()
 
 def main():
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-r', '--rows', type=int, default=81, help='Maze rows')
 	parser.add_argument('-c', '--cols', type=int, default=81, help='Maze columns')
 	parser.add_argument('-C', '--complex', action='store_true', default=False, help='Produce a more complex maze')
+	parser.add_argument('-a', '--animate', action='store_true', default=False, help='Slow down solver execution to display a nice animation')
 	args = parser.parse_args()
 
 	maze = Maze(args.rows, args.cols, args.complex)
-	win = MazeWindow(maze)
+	win = MazeWindow(maze, args.animate)
 	win.show_all()
 	Gtk.main()
 
