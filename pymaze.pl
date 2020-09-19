@@ -155,36 +155,39 @@ class Maze:
 		self.set_cell(cell, 3)
 		stack.append(cell)
 
-		solved = not True
-
-		while not solved:
+		while len(stack):
 			cell = stack.pop(-1)
 			row = cell[0]
 			col = cell[1]
 			d = self.board[row][col]
+			sel_d = d
 
-			r = random.randint(0, 3)
+			sel_row = sel_col = -1
 			for i in range(4):
-				n = neighbours[(i + r) % 4]
+				n = neighbours[i]
 				n_row = row + n[0]
 				n_col = col + n[1]
 
 				if n_row < 0 or n_row >= self.num_rows or n_col < 0 or n_col >= self.num_cols:
 					continue
 
-				if self.is_end([n_row, n_col]):
-					self.board[n_row][n_col] = d + 1
-					solved = True
-					break
-
-				if self.board[n_row][n_col] == 0 or self.board[n_row][n_col] > 2:
+				if self.board[n_row][n_col] == 0:
 					continue
 
-				stack.append([row, col])
+				if self.board[n_row][n_col] == 2:
+					sel_row = n_row
+					sel_col = n_col
+					break
 
-				self.board[n_row][n_col] = d + 1
-				stack.append([n_row, n_col])
-				break
+				if self.board[n_row][n_col] > sel_d + 1:
+					sel_d = sel_d + 1
+					sel_row = n_row
+					sel_col = n_col
+
+			if sel_row != -1:
+				stack.append([row, col])
+				self.board[sel_row][sel_col] = d + 1
+				stack.append([sel_row, sel_col])
 
 	def mark_solution_path(self):
 		neighbours = [ [ -1, 0 ], [ 0, 1 ], [ 1, 0 ], [ 0, -1 ] ]
