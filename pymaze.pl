@@ -25,6 +25,8 @@ import threading
 import time
 import re
 
+from timeit import default_timer as timer
+
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 from gi.repository import Gdk
@@ -67,6 +69,8 @@ class Maze:
 		self.created = False
 		self.start_cell = None
 		self.end_cell = None
+		self.path_solve_time = 0
+		self.path_len = 0
 
 	# Row and col numbers must be odd
 	def set_sizes(self, rows: int, cols: int):
@@ -197,6 +201,10 @@ class Maze:
 			abs(cell.col - self.end_cell.col))
 
 	def solve(self, delay = 0):
+		self.path_solve_time = 0
+		self.path_len = 0
+		t = timer()
+
 		neighbours = [ Cell(-1, 0), Cell(0, 1), Cell(1, 0), Cell(0, -1) ]
 		open = []
 		closed = []
@@ -219,9 +227,14 @@ class Maze:
 			self.board[cell.row][cell.col].color = [ 0.8, 0.8, 0.8 ]
 
 			if cell == self.end_cell:
+				self.path_solve_time = timer() - t
+				self.path_len = 1
+
 				while cell.parent is not None:
 					self.board[cell.row][cell.col].path = True
 					cell = cell.parent
+					self.path_len += 1
+
 				self.board[cell.row][cell.col].path = True
 				return
 
@@ -345,6 +358,9 @@ class MazeWindow(Gtk.Window):
 		button.connect("clicked", self.on_solve_clicked)
 		grid.attach_next_to(button, check, Gtk.PositionType.BOTTOM, 2, 1)
 
+		label = Gtk.Label()
+		grid.attach_next_to(label, button, Gtk.PositionType.BOTTOM, 2, 1)
+		self.path_info_label = label
 
 		self.connect("destroy", Gtk.main_quit)
 		self.connect("key_press_event", self.on_key_press)
@@ -384,6 +400,9 @@ class MazeWindow(Gtk.Window):
 			self.queue_draw()
 			self.solver_thread = None
 			self.controls_grid.set_sensitive(True)
+			info = "Length: %d\nTime: %.3fs" % (self.maze.path_len,
+							    self.maze.path_solve_time)
+			self.path_info_label.set_text(info)
 			return False
 
 		if self.animate:
