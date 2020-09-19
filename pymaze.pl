@@ -36,6 +36,9 @@ class Maze:
 		self.start_cell = [ 1, 0 ]
 		self.end_cell = [ self.num_rows - 2, self.num_cols - 1 ]
 
+		self.do_maze()
+
+	def do_maze(self):
 		self.init_board()
 		self.create()
 		self.solve()
@@ -246,9 +249,7 @@ class MazeWindow(Gtk.Window):
 
 	def on_key_press(self, win, event):
 		if event.keyval == Gdk.KEY_F5:
-			self.maze.init_board()
-			self.maze.create()
-			self.maze.solve()
+			self.maze.do_maze()
 			win.queue_draw()
 
 def main():
