@@ -62,7 +62,6 @@ class Maze:
 		self.init_board()
 		self.create()
 		self.solve()
-		self.mark_solution_path()
 
 	def init_board(self):
 		self.board.clear()
@@ -216,10 +215,6 @@ class Maze:
 				stack.append(cell)
 				sel_cell.value = d + 1
 				stack.append(sel_cell)
-
-
-	def mark_solution_path(self):
-		neighbours = [ Cell(-1, 0), Cell(0, 1), Cell(1, 0), Cell(0, -1) ]
 
 		cell = self.end_cell
 		while not self.is_start(cell):
