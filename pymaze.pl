@@ -27,8 +27,9 @@ from gi.repository import Gdk
 
 class Maze:
 	def __init__(self, num_rows = 21, num_cols = 21, difficult = False):
-		self.num_rows = num_rows
-		self.num_cols = num_cols
+		# Row and col numbers must be odd
+		self.num_rows = num_rows + 1 if not num_rows & 0x1 else num_rows
+		self.num_cols = num_cols + 1 if not num_cols & 0x1 else num_cols
 		self.difficult = difficult
 
 		self.board = []
