@@ -189,6 +189,7 @@ class Maze:
 		while len(open):
 			cell = open.pop(0)
 			closed.append(cell)
+			self.board[cell.row][cell.col].color = [ 0.8, 0.8, 0.8 ]
 
 			if cell == self.end_cell:
 				while cell.parent is not None:
@@ -221,6 +222,7 @@ class Maze:
 
 				# Lookup in open for same cell with a lower value
 				if not self.lookup_cell_low_value(open, n_cell):
+					self.board[n_cell.row][n_cell.col].color = [ 0.5, 0.5, 0.5 ]
 					bisect.insort_left(open, n_cell)
 
 		print("No path found!!!")
