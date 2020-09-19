@@ -75,7 +75,7 @@ class Maze:
 			row = cell[0]
 			col = cell[1]
 
-			# Choose a neighbour
+			# Choose a random neighbour
 			r = random.randint(0, 3)
 			for i in range(4):
 				n = neighbours[(i + r) % 4]
@@ -88,8 +88,12 @@ class Maze:
 				if self.board[n_row][n_col] == 2:
 					continue
 
+				# Put the current cell back into the stack
 				stack.append([row, col])
 
+				# Mark the neighbour as visited and put it
+				# into the stack so it's the next cell to be
+				# investigated
 				self.board[n_row][n_col] = 2
 				stack.append([n_row, n_col])
 
@@ -99,7 +103,7 @@ class Maze:
 
 				break
 
-			# Break the wall
+			# Mark the cell as visited
 			self.board[row][col] = 2
 
 		self.set_cell(self.start_cell, 2)
