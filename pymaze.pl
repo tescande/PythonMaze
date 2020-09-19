@@ -233,12 +233,12 @@ class MazeWindow(Gtk.Window):
 		self.set_default_size(maze.num_cols * 10 + 20,
 				      maze.num_rows * 10 + 20)
 
-		da = Gtk.DrawingArea()
-		self.add(da)
+		self.da = Gtk.DrawingArea()
+		self.add(self.da)
 
 		self.connect("destroy", Gtk.main_quit)
 		self.connect("key_press_event", self.on_key_press)
-		da.connect('draw', self.on_draw)
+		self.da.connect('draw', self.on_draw)
 
 		self.maze = maze
 
