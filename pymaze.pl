@@ -24,112 +24,140 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 from gi.repository import Gdk
 
-num_cols = 81
-num_rows = 81
+class Maze:
+	def __init__(self, num_rows = 21, num_cols = 21):
+		self.num_rows = num_rows
+		self.num_cols = num_cols
+		self.board = []
+		self.start_cell = []
+		self.end_cell = []
 
-def show_maze(maze):
-	for row in maze:
-		for v in row:
-			print(" " if v else "X", end = ' ')
+		self.init_board()
+		self.create()
+
+	def init_board(self):
+		self.board.clear()
+
+		for r in range(self.num_rows):
+			row = []
+			for c in range(self.num_cols):
+				row.append(1 if r % 2 and c % 2 else 0)
+			self.board.append(row)
+
+	def is_wall(self, row, col):
+		return self.board[row][col] == 0
+
+	def create(self):
+		stack = []
+		neighbours = [ [ -2, 0 ], [ 0, 2 ], [ 2, 0 ], [ 0, -2 ] ]
+		walls = [ [ -1, 0 ], [ 0, 1 ], [ 1, 0 ], [ 0, -1 ] ]
+
+		row = random.randrange(1, self.num_rows, 2);
+		col = random.randrange(1, self.num_cols, 2);
+		self.board[row][col] = 2
+
+		stack.append([row, col])
+
+		while (len(stack)):
+			cell = stack.pop(-1)
+			row = cell[0]
+			col = cell[1]
+
+			# Choose a neighbour
+			r = random.randint(0, 3)
+			for i in range(4):
+				n = neighbours[(i + r) % 4]
+				n_row = row + n[0]
+				n_col = col + n[1]
+
+				if n_row < 0 or n_row >= self.num_rows or n_col < 0 or n_col >= self.num_cols:
+					continue
+
+				if self.board[n_row][n_col] == 2:
+					continue
+
+				stack.append([row, col])
+
+				self.board[n_row][n_col] = 2
+				stack.append([n_row, n_col])
+
+				# Remove wall between cells
+				w = walls[(i + r) % 4]
+				self.board[row + w[0]][col + w[1]] = 2
+
+				break
+
+			# Break the wall
+			self.board[row][col] = 2
+
+		for row in range(self.num_rows):
+			if self.board[row][1]:
+				self.board[row][0] = 2
+				self.start_cell = [ row, 0 ]
+				break
+
+		for row in range(self.num_rows - 1, 0, -1):
+			if self.board[row][self.num_cols - 2]:
+				self.board[row][self.num_cols - 1] = 2
+				self.end_cell = [ row, self.num_cols - 1 ]
+				break
+
+	def are_same_cells(self, cell1, cell2):
+		return cell1[0] == cell2[0] and cell1[1] == cell2[1]
+
+	def is_start(self, cell):
+		return self.are_same_cells(cell, self.start_cell)
+
+	def is_end(self, cell):
+		return self.are_same_cells(cell, self.end_cell)
+
+	def show_maze(self):
+		for row in self.maze:
+			for v in row:
+				print(" " if v else "X", end = ' ')
+			print("")
 		print("")
-	print("")
 
-def init_maze(maze):
-	maze.clear()
+class MazeWindow(Gtk.Window):
+	def __init__(self, maze):
+		self.maze = maze
 
-	for r in range(num_rows):
-		row = []
-		for c in range(num_cols):
-			row.append(1 if r % 2 and c % 2 else 0)
-		maze.append(row)
+		Gtk.Window.__init__(self, title="Python Maze")
+		self.set_default_size(maze.num_cols * 10 + 20,
+				      maze.num_rows * 10 + 20)
 
-def create_maze(maze):
-	stack = []
-	neighbours = [ [ -2, 0 ], [ 0, 2 ], [ 2, 0 ], [ 0, -2 ] ]
-	walls = [ [ -1, 0 ], [ 0, 1 ], [ 1, 0 ], [ 0, -1 ] ]
+		da = Gtk.DrawingArea()
+		self.add(da)
 
-	row = random.randrange(1, num_rows, 2);
-	col = random.randrange(1, num_cols, 2);
-	maze[row][col] = 2
+		self.connect("destroy", Gtk.main_quit)
+		self.connect("key_press_event", self.on_key_press)
+		da.connect('draw', self.on_draw)
 
-	stack.append([row, col])
+		self.maze = maze
 
-	while (len(stack)):
-		cell = stack.pop(-1)
-		row = cell[0]
-		col = cell[1]
+	def on_draw(self, win, cr):
+		cr.set_source_rgb(0, 0, 0)
+		for row in range(self.maze.num_rows):
+			for col in range(self.maze.num_cols):
+				v = self.maze.board[row][col]
+				if v > 0:
+					continue
 
-		# Choose a neighbour
-		r = random.randint(0, 3)
-		for i in range(4):
-			n = neighbours[(i + r) % 4]
-			n_row = row + n[0]
-			n_col = col + n[1]
-
-			if n_row < 0 or n_row >= num_rows or n_col < 0 or n_col >= num_cols:
-				continue
-
-			if maze[n_row][n_col] == 2:
-				continue
-
-			stack.append([row, col])
-
-			maze[n_row][n_col] = 2
-			stack.append([n_row, n_col])
-
-			# Remove wall between cells
-			w = walls[(i + r) % 4]
-			maze[row + w[0]][col + w[1]] = 2
-
-			break
-
-	for row in range(num_rows):
-		if maze[row][1]:
-			maze[row][0] = 2
-			break
-
-	for row in range(num_rows - 1, 0, -1):
-		if maze[row][num_cols - 2]:
-			maze[row][num_cols - 1] = 2
-			break
-
-def on_draw(win, cr, maze):
-	cr.set_source_rgb(0, 0, 0)
-
-	for row in range(num_rows):
-		for col in range(num_cols):
-			if maze[row][col] == 0:
 				cr.rectangle(col * 10 + 10, row * 10 + 10, 10, 10)
 				cr.fill()
 
-def on_key_press(win, event, maze):
-	if event.keyval == Gdk.KEY_F5:
-		init_maze(maze)
-		create_maze(maze)
-		win.queue_draw()
+	def on_key_press(self, win, event):
+		if event.keyval == Gdk.KEY_F5:
+			self.maze.init_board()
+			self.maze.create()
 
-def gui(maze):
-	win = Gtk.Window()
-	win.set_default_size(num_cols * 10 + 20, num_rows * 10 + 20)
-	da = Gtk.DrawingArea()
-	win.add(da)
+			win.queue_draw()
 
-	win.connect("destroy", Gtk.main_quit)
-	win.connect("key_press_event", on_key_press, maze)
-	da.connect('draw', on_draw, maze)
-
+def main():
+	maze = Maze(71, 71)
+	win = MazeWindow(maze)
 	win.show_all()
 	Gtk.main()
 
-def main():
-	maze = []
-
-	init_maze(maze)
-	create_maze(maze)
-	#show_maze(maze)
-	gui(maze)
-
-
 if __name__ == "__main__":
 	main()
-
