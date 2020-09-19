@@ -251,8 +251,6 @@ class MazeWindow(Gtk.Window):
 		self.connect("key_press_event", self.on_key_press)
 		self.da.connect('draw', self.on_draw)
 
-		self.maze = maze
-
 	def set_cr_color(self, cr, color):
 		cr.set_source_rgb(color[0], color[1], color[2])
 
